@@ -67,7 +67,7 @@ fn ts64(x: &mut Vec<u32>, i: usize, h:u32, l:u32) {
 	x[i+7] = ( l & 0xff );
 }
 
-fn vn(x: Vec<u32>, xi:usize, y: Vec<u32>, yi:usize, n:usize) -> isize {
+fn vn(x: &Vec<u32>, xi:usize, y: &Vec<u32>, yi:usize, n:usize) -> isize {
 	let mut d:u32 = 0;
 	for i in (1..n) {
 		d = d | ( x[xi+i] ^ y[yi+i] );
@@ -77,11 +77,11 @@ fn vn(x: Vec<u32>, xi:usize, y: Vec<u32>, yi:usize, n:usize) -> isize {
 	return _r as isize;
 }
 
-fn crypto_verify_32(x: Vec<u32>, xi: usize, y: Vec<u32>, yi: usize) -> isize {
+fn crypto_verify_32(x: &Vec<u32>, xi: usize, y: &Vec<u32>, yi: usize) -> isize {
 	return vn(x,xi,y,yi,32);
 }
 
-fn set25519(r: &mut Vec<i64>, a: Vec<i64>) {
+fn set25519(r: &mut Vec<i64>, a: &Vec<i64>) {
 	for i in (0..16) {
 		r[i] = a[i] | 0;
 	}
@@ -108,7 +108,7 @@ fn sel25519(p: &mut Vec<i64>, q: &mut Vec<i64>, b: isize) {
 	}
 }
 
-fn pack25519(o: &mut Vec<u32>, n: Vec<i64>) {
+fn pack25519(o: &mut Vec<u32>, n: &Vec<i64>) {
 	let mut b: i64;
 	let mut m = gf();
 	let mut t = gf();
@@ -138,21 +138,21 @@ fn pack25519(o: &mut Vec<u32>, n: Vec<i64>) {
 	}
 }
 
-fn neq25519(a: Vec<i64>, b: Vec<i64>) -> isize {
+fn neq25519(a: &Vec<i64>, b: &Vec<i64>) -> isize {
   let mut c: Vec<u32> = vec![0; 32];
   let mut d: Vec<u32> = vec![0; 32];
   pack25519(&mut c, a);
   pack25519(&mut d, b);
-  return crypto_verify_32(c, 0, d, 0);
+  return crypto_verify_32(&c, 0, &d, 0);
 }
 
-fn par25519(a: Vec<i64>) -> u32 {
+fn par25519(a: &Vec<i64>) -> u32 {
   let mut d: Vec<u32> = vec![0; 32];
   pack25519(&mut d, a);
   return d[0] & 1;
 }
 
-fn unpack25519(o: &mut Vec<i64>, n: Vec<u32>) {	
+fn unpack25519(o: &mut Vec<i64>, n: &Vec<u32>) {	
 	for i in (0..16) {
 		let value: u32 = n[2*i] + (n[2*i+1] << 8);
 		o[i] = value as i64;
@@ -160,20 +160,20 @@ fn unpack25519(o: &mut Vec<i64>, n: Vec<u32>) {
 	o[15] = o[15] & 0x7fff;
 }
 
-fn A(o: &mut Vec<i64>, a: Vec<i64>, b: Vec<i64>) {
+fn A(o: &mut Vec<i64>, a: &Vec<i64>, b: &Vec<i64>) {
 	for i in (0..16) {
 		o[i] = a[i] + b[i];
 	}
 }
 
-fn Z(o: &mut Vec<i64>, a: Vec<i64>, b: Vec<i64>) {
+fn Z(o: &mut Vec<i64>, a: &Vec<i64>, b: &Vec<i64>) {
 	for i in (0..16) {
 		o[i] = a[i] - b[i];
 	}
 }
 
 // optimized by Miguel
-fn M(o: &mut Vec<i64>, a: Vec<i64>, b: Vec<i64>) {    
+fn M(o: &mut Vec<i64>, a: &Vec<i64>, b: &Vec<i64>) {    
   let mut at: Vec<i64> = vec![0; 32]; 
   let mut ab: Vec<i64> = vec![0; 16];
   
@@ -218,11 +218,11 @@ fn M(o: &mut Vec<i64>, a: Vec<i64>, b: Vec<i64>) {
   
 }
 
-fn S(o: &mut Vec<i64>, a: Vec<i64>) {
-	M(o, a.clone(), a.clone());
+fn S(o: &mut Vec<i64>, a: &Vec<i64>) {
+	M(o, &a, &a);
 }
 
-fn inv25519(o: &mut Vec<i64>, i: Vec<i64>) {      
+fn inv25519(o: &mut Vec<i64>, i: &Vec<i64>) {      
 	let mut c = gf();
 	for a in (0..16) {
 		c[a] = i[a];
@@ -230,10 +230,10 @@ fn inv25519(o: &mut Vec<i64>, i: Vec<i64>) {
 	
 	for a in (0..=253).rev() {
 		let cc = c.clone();
-		S(&mut c, cc);
+		S(&mut c, &cc);
 		if(a != 2 && a != 4) {
 			let cc = c.clone();
-			M(&mut c, cc, i.clone());
+			M(&mut c, &cc, i);
 		}
 	}
 	for a in (0..16) {
@@ -241,17 +241,17 @@ fn inv25519(o: &mut Vec<i64>, i: Vec<i64>) {
 	}
 }
 
-fn pow2523(o: &mut Vec<i64>, i: Vec<i64>) {
+fn pow2523(o: &mut Vec<i64>, i: &Vec<i64>) {
 	let mut c = gf();
 	for a in (0..16) {
 		c[a] = i[a];
 	}
 	for a in (0..=250).rev() {
 		let cc = c.clone();
-		S(&mut c, cc);
+		S(&mut c, &cc);
 		if a != 1 {
 			let cc = c.clone();
-			M(&mut c, cc, i.clone());
+			M(&mut c, &cc, &i);
 		}
 	}
 	for a in (0..16) {
@@ -259,7 +259,7 @@ fn pow2523(o: &mut Vec<i64>, i: Vec<i64>) {
 	}
 }
 
-fn crypto_scalarmult(q: &mut Vec<u32>, n: Vec<u32>, p: Vec<u32>) -> usize {
+fn crypto_scalarmult(q: &mut Vec<u32>, n: &Vec<u32>, p: &Vec<u32>) -> usize {
 	let mut z: Vec<u32> = vec![0; 32];
 	let mut x: Vec<i64> = vec![0; 80];
 	let mut r: u32;
@@ -294,24 +294,24 @@ fn crypto_scalarmult(q: &mut Vec<u32>, n: Vec<u32>, p: Vec<u32>) -> usize {
 		
 		sel25519(&mut a, &mut b, r as isize);	
 		sel25519(&mut c, &mut d, r as isize);			
-		A(&mut e, a.clone(), c.clone() );
-		let aa = a.clone(); Z(&mut a, aa, c.clone() );			
-		A(&mut c, b.clone(), d.clone());
-		let bb = b.clone(); Z(&mut b, bb, d.clone() );
-		S(&mut d, e.clone() );
-		S(&mut f, a.clone() );
-		let aa = a.clone(); M(&mut a, c.clone(), aa );			
-		M(&mut c, b.clone(), e.clone() );
-		A(&mut e, a.clone(), c.clone() );
-		let aa = a.clone(); Z(&mut a, aa, c.clone() );
-		S(&mut b, a.clone() );
-		Z(&mut c, d.clone(), f.clone() );		
-		M(&mut a, c.clone(), _121665.to_vec() );
-		let aa = a.clone(); A(&mut a, aa, d.clone() );
-		let cc = c.clone(); M(&mut c, cc, a.clone() );
-		M(&mut a, d.clone(), f.clone() );
-		M(&mut d, b.clone(), x.clone() );
-		S(&mut b, e.clone() );     
+		A(&mut e, &a, &c );
+		let aa = a.clone(); Z(&mut a, &aa, &c );			
+		A(&mut c, &b, &d);
+		let bb = b.clone(); Z(&mut b, &bb, &d );
+		S(&mut d, &e );
+		S(&mut f, &a );
+		let aa = a.clone(); M(&mut a, &c, &aa );			
+		M(&mut c, &b, &e );
+		A(&mut e, &a, &c );
+		let aa = a.clone(); Z(&mut a, &aa, &c );
+		S(&mut b, &a );
+		Z(&mut c, &d, &f );		
+		M(&mut a, &c, &_121665.to_vec() );
+		let aa = a.clone(); A(&mut a, &aa, &d );
+		let cc = c.clone(); M(&mut c, &cc, &a );
+		M(&mut a, &d, &f );
+		M(&mut d, &b, &x );
+		S(&mut b, &e );     
 		sel25519(&mut a, &mut b, r as isize );		
 		sel25519(&mut c, &mut d, r as isize );
 		
@@ -327,16 +327,16 @@ fn crypto_scalarmult(q: &mut Vec<u32>, n: Vec<u32>, p: Vec<u32>) -> usize {
 	let mut x32: Vec<i64> = (&x[32..]).to_vec();
 	let mut x16: Vec<i64> = (&x[16..]).to_vec();
 	
-	let xx32 = x32.clone(); inv25519(&mut x32, xx32);				
-	let xx16 = x16.clone(); M(&mut x16, xx16, x32.clone());
+	let xx32 = x32.clone(); inv25519(&mut x32, &xx32);				
+	let xx16 = x16.clone(); M(&mut x16, &xx16, &x32);
 	
-	pack25519(q, x16);
+	pack25519(q, &x16);
 	
 	return 0;
 }
 
-fn crypto_scalarmult_base(q: &mut Vec<u32>, n: Vec<u32>) -> usize {
-  return crypto_scalarmult(q, n, _9.to_vec() );
+fn crypto_scalarmult_base(q: &mut Vec<u32>, n: &Vec<u32>) -> usize {
+  return crypto_scalarmult(q, n, &_9.to_vec() );
 }	
 
 // Constantes de cada ronda del SHA-512
@@ -383,7 +383,7 @@ const K: [i64; 160] = [
   0x5fcb6fab, 0x3ad6faec, 0x6c44198c, 0x4a475817];
 
 // optimized by miguel
-fn crypto_hashblocks_hl(hh: &mut Vec<u32>, hl: &mut Vec<u32>, m: Vec<u32>, _n: usize) -> usize {
+fn crypto_hashblocks_hl(hh: &mut Vec<u32>, hl: &mut Vec<u32>, m: &Vec<u32>, _n: usize) -> usize {
   
 	let mut wh: Vec<u32> = vec![0; 16];
 	let mut wl: Vec<u32> = vec![0; 16];
@@ -622,14 +622,14 @@ fn crypto_hashblocks_hl(hh: &mut Vec<u32>, hl: &mut Vec<u32>, m: Vec<u32>, _n: u
 	  return n;
 }
 
-fn crypto_hash(out: &mut Vec<u32>, m: Vec<u32>, _n: usize) -> usize {
+fn crypto_hash(out: &mut Vec<u32>, m: &Vec<u32>, _n: usize) -> usize {
 	let mut hh: Vec<u32> = ([0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19]).to_vec();
 	let mut hl: Vec<u32> = ([0xf3bcc908, 0x84caa73b, 0xfe94f82b, 0x5f1d36f1, 0xade682d1, 0x2b3e6c1f, 0xfb41bd6b, 0x137e2179]).to_vec();	
 	let mut x: Vec<u32> = vec![0; 256];
 	let mut n = _n;
 	let b = n;
 
-	crypto_hashblocks_hl(&mut hh, &mut hl, m.clone(), n);
+	crypto_hashblocks_hl(&mut hh, &mut hl, &m, n);
 				
 	n %= 128;
 
@@ -647,7 +647,7 @@ fn crypto_hash(out: &mut Vec<u32>, m: Vec<u32>, _n: usize) -> usize {
 			
 	ts64(&mut x, n-8, ((b / 0x20000000) | 0) as u32, (b << 3) as u32 );
 	
-	crypto_hashblocks_hl(&mut hh, &mut hl, x, n);
+	crypto_hashblocks_hl(&mut hh, &mut hl, &x, n);
 	
 	for i in (0..8) {
 		ts64(out, 8*i, hh[i], hl[i]);
@@ -668,25 +668,25 @@ fn add(p: &mut Vec<Vec<i64>>, q: &mut Vec<Vec<i64>>) {
 	let mut h = gf();
 	let mut t = gf();
 
-	Z(&mut a, p[1].clone(), p[0].clone());
-	Z(&mut t, q[1].clone(), q[0].clone());
-	let aa = a.clone(); M(&mut a, aa, t.clone());
-	A(&mut b, p[0].clone(), p[1].clone());
-	A(&mut t, q[0].clone(), q[1].clone());
-	let bb = b.clone(); M(&mut b, bb, t.clone());
-	M(&mut c, p[3].clone(), q[3].clone());
-	let cc = c.clone(); M(&mut c, cc, D2.to_vec());
-	M(&mut d, p[2].clone(), q[2].clone());
-	let dd = d.clone(); A(&mut d, dd.clone(), dd.clone());
-	Z(&mut e, b.clone(), a.clone());
-	Z(&mut f, d.clone(), c.clone());
-	A(&mut g, d.clone(), c.clone());
-	A(&mut h, b.clone(), a.clone());
+	Z(&mut a, &p[1], &p[0]);
+	Z(&mut t, &q[1], &q[0]);
+	let aa = a.clone(); M(&mut a, &aa, &t);
+	A(&mut b, &p[0], &p[1]);
+	A(&mut t, &q[0], &q[1]);
+	let bb = b.clone(); M(&mut b, &bb, &t);
+	M(&mut c, &p[3], &q[3]);
+	let cc = c.clone(); M(&mut c, &cc, &D2.to_vec());
+	M(&mut d, &p[2], &q[2]);
+	let dd = d.clone(); A(&mut d, &dd, &dd);
+	Z(&mut e, &b, &a);
+	Z(&mut f, &d, &c);
+	A(&mut g, &d, &c);
+	A(&mut h, &b, &a);
 
-	M(&mut p[0], e.clone(), f.clone());
-	M(&mut p[1], h.clone(), g.clone());
-	M(&mut p[2], g.clone(), f.clone());
-	M(&mut p[3], e.clone(), h.clone());
+	M(&mut p[0], &e, &f);
+	M(&mut p[1], &h, &g);
+	M(&mut p[2], &g, &f);
+	M(&mut p[3], &e, &h);
 }
 
 fn cswap(p: &mut Vec<Vec<i64>>, q: &mut Vec<Vec<i64>>, b: isize) {
@@ -695,29 +695,29 @@ fn cswap(p: &mut Vec<Vec<i64>>, q: &mut Vec<Vec<i64>>, b: isize) {
   }
 }
 
-fn pack(r: &mut Vec<u32>, p: Vec<Vec<i64>>) {
+fn pack(r: &mut Vec<u32>, p: &Vec<Vec<i64>>) {
   let mut tx = gf();
   let mut ty = gf();
   let mut zi = gf();
 	
-  inv25519(&mut zi, p[2].clone());
+  inv25519(&mut zi, &p[2]);
   
-  M(&mut tx, p[0].clone(), zi.clone());
-  M(&mut ty, p[1].clone(), zi.clone());
+  M(&mut tx, &p[0], &zi);
+  M(&mut ty, &p[1], &zi);
 	
-  pack25519(r, ty.clone());
+  pack25519(r, &ty);
 	
-  r[31] = r[31] ^ ( par25519(tx) << 7 )
+  r[31] = r[31] ^ ( par25519(&tx) << 7 )
 	
 }
 
-fn scalarmult(p: &mut Vec<Vec<i64>>, q: &mut Vec<Vec<i64>>, s: Vec<u32>) {
+fn scalarmult(p: &mut Vec<Vec<i64>>, q: &mut Vec<Vec<i64>>, s: &Vec<u32>) {
 	let mut b: u32;
   
-	set25519(&mut p[0], gf0.to_vec());
-	set25519(&mut p[1], gf1.to_vec());
-	set25519(&mut p[2], gf1.to_vec());
-	set25519(&mut p[3], gf0.to_vec());
+	set25519(&mut p[0], &gf0.to_vec());
+	set25519(&mut p[1], &gf1.to_vec());
+	set25519(&mut p[2], &gf1.to_vec());
+	set25519(&mut p[3], &gf0.to_vec());
   
 	for i in (0..=255).rev() {
 		b = ( s[(i/8) | 0] >> (i & 7)) & 1;
@@ -728,12 +728,12 @@ fn scalarmult(p: &mut Vec<Vec<i64>>, q: &mut Vec<Vec<i64>>, s: Vec<u32>) {
 	}
 }
 
-fn scalarbase(p: &mut Vec<Vec<i64>>, s: Vec<u32>) {
+fn scalarbase(p: &mut Vec<Vec<i64>>, s: &Vec<u32>) {
   let mut q: Vec<Vec<i64>> = ([gf(), gf(), gf(), gf()]).to_vec();
-  set25519(&mut q[0], X.to_vec());
-  set25519(&mut q[1], Y.to_vec());
-  set25519(&mut q[2], gf1.to_vec());
-  M(&mut q[3], X.to_vec(), Y.to_vec()); 
+  set25519(&mut q[0], &X.to_vec());
+  set25519(&mut q[1], &Y.to_vec());
+  set25519(&mut q[2], &gf1.to_vec());
+  M(&mut q[3], &X.to_vec(), &Y.to_vec()); 
   scalarmult(p, &mut q, s);
 }
 
@@ -787,7 +787,7 @@ fn reduce(r: &mut Vec<u32>) {
 }
 
 // Like crypto_sign, but uses secret key directly in hash.
-fn crypto_sign_direct(sm: &mut Vec<u32>, m: Vec<u32>, n: usize, sk: Vec<u32>) -> usize {
+fn crypto_sign_direct(sm: &mut Vec<u32>, m: &Vec<u32>, n: usize, sk: &Vec<u32>) -> usize {
   let mut h: Vec<u32> = vec![0; 64];
   let mut r: Vec<u32> = vec![0; 64];
   let mut x: Vec<i32> = vec![0; 64];
@@ -803,19 +803,19 @@ fn crypto_sign_direct(sm: &mut Vec<u32>, m: Vec<u32>, n: usize, sk: Vec<u32>) ->
 
   let mut x32: Vec<u32> = (&sm[32..]).to_vec();
 
-  crypto_hash(&mut r, x32, n+32); 
+  crypto_hash(&mut r, &x32, n+32); 
 	
   reduce(&mut r);
   
-  scalarbase(&mut p, r.clone());
+  scalarbase(&mut p, &r);
 	
-  pack(sm, p.clone());
+  pack(sm, &p);
 	
   for i in (0..32) {
 	sm[i + 32] = sk[32 + i];
   }
   
-  crypto_hash(&mut h, sm.clone(), n + 64);
+  crypto_hash(&mut h, &sm, n + 64);
   reduce(&mut h);
 
   for i in (0..64) {
@@ -843,7 +843,7 @@ fn crypto_sign_direct(sm: &mut Vec<u32>, m: Vec<u32>, n: usize, sk: Vec<u32>) ->
 }
 
 // Note: sm must be n+128.
-fn crypto_sign_direct_rnd(sm: &mut Vec<u32>, m: Vec<u32>, n: usize, sk: Vec<u32>, rnd: Vec<u32>) -> usize {
+fn crypto_sign_direct_rnd(sm: &mut Vec<u32>, m: &Vec<u32>, n: usize, sk: &Vec<u32>, rnd: &Vec<u32>) -> usize {
   let mut h: Vec<u32> = vec![0; 64];
   let mut r: Vec<u32> = vec![0; 64];
   let mut x: Vec<i32> = vec![0; 64];
@@ -870,16 +870,16 @@ fn crypto_sign_direct_rnd(sm: &mut Vec<u32>, m: Vec<u32>, n: usize, sk: Vec<u32>
 	sm[n + 64 + i] = rnd[i];
   }
 
-  crypto_hash(&mut r, sm.clone(), n+128);
+  crypto_hash(&mut r, &sm, n+128);
   reduce(&mut r);
-  scalarbase(&mut p, r.clone());
-  pack(sm, p.clone());
+  scalarbase(&mut p, &r);
+  pack(sm, &p);
 
   for i in (0..32) {
 	sm[i + 32] = sk[32 + i];
   }
 	
-  crypto_hash(&mut h, sm.clone(), n + 64);
+  crypto_hash(&mut h, &sm, n + 64);
   reduce(&mut h);
 
   // Wipe out random suffix.
@@ -910,7 +910,7 @@ fn crypto_sign_direct_rnd(sm: &mut Vec<u32>, m: Vec<u32>, n: usize, sk: Vec<u32>
   return n + 64;
 }
 
-fn curve25519_sign(sm: &mut Vec<u32>, m: Vec<u32>, n: usize, sk:Vec<u32>, opt_rnd:Vec<u32>) -> usize {
+fn curve25519_sign(sm: &mut Vec<u32>, m: &Vec<u32>, n: usize, sk:&Vec<u32>, opt_rnd: &Vec<u32>) -> usize {
   // If opt_rnd is provided, sm must have n + 128,
   // otherwise it must have n + 64 bytes.
 
@@ -927,10 +927,10 @@ fn curve25519_sign(sm: &mut Vec<u32>, m: Vec<u32>, n: usize, sk:Vec<u32>, opt_rn
   edsk[31] = edsk[31] & 127;
   edsk[31] = edsk[31] | 64;
    
-  scalarbase(&mut p, edsk.clone() );  
+  scalarbase(&mut p, &edsk );  
 	  
   let mut tmp: Vec<u32> = (&edsk[32..]).to_vec();
-  pack(&mut tmp, p.clone() );
+  pack(&mut tmp, &p );
   for i in (0..tmp.len() ) {
 	edsk[32+i] = tmp[i];
   }
@@ -940,9 +940,9 @@ fn curve25519_sign(sm: &mut Vec<u32>, m: Vec<u32>, n: usize, sk:Vec<u32>, opt_rn
   let mut smlen: usize;
 
   if opt_rnd.len() > 0 {
-	smlen = crypto_sign_direct_rnd(sm, m, n, edsk, opt_rnd);
+	smlen = crypto_sign_direct_rnd(sm, m, n, &edsk, opt_rnd);
   } else {
-	smlen = crypto_sign_direct(sm, m, n, edsk);
+	smlen = crypto_sign_direct(sm, m, n, &edsk);
   }
 
   // Copy sign bit from public key into signature.
@@ -950,7 +950,7 @@ fn curve25519_sign(sm: &mut Vec<u32>, m: Vec<u32>, n: usize, sk:Vec<u32>, opt_rn
   return smlen;
 }
 
-fn unpackneg(r: &mut Vec<Vec<i64>>, p: Vec<u32>) -> isize {
+fn unpackneg(r: &mut Vec<Vec<i64>>, p: &Vec<u32>) -> isize {
   let mut t = gf();
   let mut chk = gf();
   let mut num = gf();
@@ -959,53 +959,53 @@ fn unpackneg(r: &mut Vec<Vec<i64>>, p: Vec<u32>) -> isize {
   let mut den4 = gf();
   let mut den6 = gf();
 
-  set25519(&mut r[2], gf1.to_vec());
-  unpack25519(&mut r[1], p.clone() );
+  set25519(&mut r[2], &gf1.to_vec());
+  unpack25519(&mut r[1], &p );
 	
-  S(&mut num, r[1].clone() );
-  M(&mut den, num.clone(), D.to_vec());
-  let _num = num.clone(); Z(&mut num, _num, r[2].clone());
-  let _den = den.clone(); A(&mut den, r[2].clone(), _den);
+  S(&mut num, &r[1] );
+  M(&mut den, &num, &D.to_vec());
+  let _num = num.clone(); Z(&mut num, &_num, &r[2]);
+  let _den = den.clone(); A(&mut den, &r[2], &_den);
 
-  S(&mut den2, den.clone() );
-  S(&mut den4, den2.clone() );
-  M(&mut den6, den4.clone(), den2.clone());
-  M(&mut t, den6.clone(), num.clone());
-  let _t = t.clone(); M(&mut t, _t, den.clone());
+  S(&mut den2, &den );
+  S(&mut den4, &den2 );
+  M(&mut den6, &den4, &den2);
+  M(&mut t, &den6, &num);
+  let _t = t.clone(); M(&mut t, &_t, &den);
   
-  let _t = t.clone(); pow2523(&mut t, _t);
-  let _t = t.clone(); M(&mut t, _t, num.clone() );
-  let _t = t.clone(); M(&mut t, _t, den.clone() );
-  let _t = t.clone(); M(&mut t, _t, den.clone() );
-  M(&mut r[0], t.clone(), den.clone() );
+  let _t = t.clone(); pow2523(&mut t, &_t);
+  let _t = t.clone(); M(&mut t, &_t, &num );
+  let _t = t.clone(); M(&mut t, &_t, &den );
+  let _t = t.clone(); M(&mut t, &_t, &den );
+  M(&mut r[0], &t, &den );
   
-  S(&mut chk, r[0].clone() );
-  let _chk = chk.clone(); M(&mut chk, _chk, den.clone() );
+  S(&mut chk, &r[0] );
+  let _chk = chk.clone(); M(&mut chk, &_chk, &den );
 
-  if neq25519(chk.clone(), num.clone() ) != 0 {
-	let _r = r[0].clone(); M(&mut r[0], _r, I.to_vec());
+  if neq25519(&chk, &num ) != 0 {
+	let _r0 = r[0].clone(); M(&mut r[0], &_r0, &I.to_vec());
   }
 
-  S(&mut chk, r[0].clone() );
-  let _chk = chk.clone(); M(&mut chk, _chk, den.clone() );
+  S(&mut chk, &r[0] );
+  let _chk = chk.clone(); M(&mut chk, &_chk, &den );
   
-  if neq25519(chk.clone(), num.clone() ) != 0 {
+  if neq25519(&chk, &num ) != 0 {
 	return -1;
   }
 
-  if par25519(r[0].clone()) == (p[31] >> 7) {
-	let _r = r[0].clone(); Z(&mut r[0], gf0.to_vec(), _r );
+  if par25519(&r[0]) == (p[31] >> 7) {
+	let _r0 = r[0].clone(); Z(&mut r[0], &gf0.to_vec(), &_r0);
   }
 
   let _r0 = r[0].clone(); 
   let _r1 = r[1].clone();
-  M(&mut r[3], _r0, _r1 );
+  M(&mut r[3], &_r0, &_r1 );
    
   return 0;
   
 }
 
-fn crypto_sign_open(m: &mut Vec<u32>, sm: Vec<u32>, _n: usize, pk: Vec<u32>) -> isize {
+fn crypto_sign_open(m: &mut Vec<u32>, sm: &Vec<u32>, _n: usize, pk: &Vec<u32>) -> isize {
   let mut t: Vec<u32> = vec![0; 32];
   let mut h: Vec<u32> = vec![0; 64];
   let mut p: Vec<Vec<i64>> = ([gf(), gf(), gf(), gf()]).to_vec();
@@ -1017,7 +1017,7 @@ fn crypto_sign_open(m: &mut Vec<u32>, sm: Vec<u32>, _n: usize, pk: Vec<u32>) -> 
 	return mlen;
   }
 
-  if unpackneg(&mut q, pk.clone()) != 0 {
+  if unpackneg(&mut q, &pk) != 0 {
 	return mlen;
   }
 
@@ -1029,17 +1029,17 @@ fn crypto_sign_open(m: &mut Vec<u32>, sm: Vec<u32>, _n: usize, pk: Vec<u32>) -> 
 	m[i+32] = pk[i];
   }
   
-  crypto_hash(&mut h, m.clone(), n);
+  crypto_hash(&mut h, &m, n);
   reduce(&mut h);
-  scalarmult(&mut p, &mut q, h.clone());
+  scalarmult(&mut p, &mut q, &h);
 
   let mut tmp: Vec<u32> = (&sm[32..]).to_vec();
-  scalarbase(&mut q, tmp);
+  scalarbase(&mut q, &tmp);
   add(&mut p, &mut q );
-  pack(&mut t, p.clone() );
+  pack(&mut t, &p );
 
   n -= 64;
-  if ( crypto_verify_32(sm.clone(), 0, t, 0) != 0 ) {
+  if ( crypto_verify_32(&sm, 0, &t, 0) != 0 ) {
 	for i in (0..n) {
 	  m[i] = 0;
 	}
@@ -1057,26 +1057,26 @@ fn crypto_sign_open(m: &mut Vec<u32>, sm: Vec<u32>, _n: usize, pk: Vec<u32>) -> 
 
 // Converts Curve25519 public key back to Ed25519 public key.
 // edwardsY = (montgomeryX - 1) / (montgomeryX + 1)
-fn convertPublicKey(pk: Vec<u32>) -> Vec<u32> {
+fn convertPublicKey(pk: &Vec<u32>) -> Vec<u32> {
   let mut z: Vec<u32> = vec![0; 32];
   let mut x = gf();
   let mut a = gf();
   let mut b = gf();
 
-  unpack25519(&mut x, pk.clone() );
+  unpack25519(&mut x, &pk);
 
-  A(&mut a, x.clone(), gf1.to_vec());
-  Z(&mut b, x.clone(), gf1.to_vec());
-  let _a = a.clone(); inv25519(&mut a, _a);
-  let _a = a.clone(); M(&mut a, _a, b.clone() );
+  A(&mut a, &x, &gf1.to_vec());
+  Z(&mut b, &x, &gf1.to_vec());
+  let _a = a.clone(); inv25519(&mut a, &_a);
+  let _a = a.clone(); M(&mut a, &_a, &b );
 
-  pack25519(&mut z, a.clone() );
-  return z.clone();
+  pack25519(&mut z, &a );
+  return z;
 }
 
-fn curve25519_sign_open(m: &mut Vec<u32>, sm: &mut Vec<u32>, n: usize, pk: Vec<u32>) -> isize {
+fn curve25519_sign_open(m: &mut Vec<u32>, sm: &mut Vec<u32>, n: usize, pk: &Vec<u32>) -> isize {
   // Convert Curve25519 public key into Ed25519 public key.
-  let mut edpk = convertPublicKey(pk.clone() );
+  let mut edpk = convertPublicKey(&pk);
 
   // Restore sign bit from signature.
   edpk[31] = edpk[31] | ( sm[63] & 128);
@@ -1085,32 +1085,32 @@ fn curve25519_sign_open(m: &mut Vec<u32>, sm: &mut Vec<u32>, n: usize, pk: Vec<u
   sm[63] = sm[63] & 127;
 
   // Verify signed message.
-  return crypto_sign_open(m, sm.clone(), n, edpk);
+  return crypto_sign_open(m, &sm, n, &edpk);
   
 }
 
-fn sharedKey(secretKey: Vec<u32>, publicKey: Vec<u32>) -> Vec<u32> {
+fn sharedKey(secretKey: &Vec<u32>, publicKey: &Vec<u32>) -> Vec<u32> {
   let mut sharedKey: Vec<u32> = vec![0; 32];
   crypto_scalarmult(&mut sharedKey, secretKey, publicKey);
   return sharedKey;
 }
 
-fn signMessage(secretKey: Vec<u32>, msg: Vec<u32>, opt_random: Vec<u32>) -> Vec<u32> {	  
+fn signMessage(secretKey: &Vec<u32>, msg: &Vec<u32>, opt_random: &Vec<u32>) -> Vec<u32> {	  
   if opt_random.len() > 0 {
 	let mut buf: Vec<u32> = vec![0; 128 + msg.len()]; 
-	curve25519_sign(&mut buf, msg.clone(), msg.len(), secretKey, opt_random);
+	curve25519_sign(&mut buf, &msg, msg.len(), secretKey, opt_random);
 	let mut tmp: Vec<u32> = (&buf[0..64 + msg.len()]).to_vec();
 	return tmp;
   } else {
 	let mut signedMsg: Vec<u32> = vec![0; 64 + msg.len()];
-	curve25519_sign(&mut signedMsg, msg.clone(), msg.len(), secretKey, opt_random);
+	curve25519_sign(&mut signedMsg, &msg, msg.len(), secretKey, opt_random);
 	return signedMsg;
   }
 }
 
-fn openMessage(publicKey: Vec<u32>, signedMsg: &mut Vec<u32>) -> Vec<u32> {
+fn openMessage(publicKey: &Vec<u32>, signedMsg: &mut Vec<u32>) -> Vec<u32> {
   let mut tmp: Vec<u32> = vec![0; signedMsg.len()];
-  let mlen = curve25519_sign_open(&mut tmp, signedMsg, signedMsg.len(), publicKey.clone() );
+  let mlen = curve25519_sign_open(&mut tmp, signedMsg, signedMsg.len(), &publicKey );
   let mut m: Vec<u32> = vec![0; mlen as usize];
   for i in (0..m.len()) {
 	m[i] = tmp[i];
@@ -1118,13 +1118,13 @@ fn openMessage(publicKey: Vec<u32>, signedMsg: &mut Vec<u32>) -> Vec<u32> {
   return m;
 }
 
-fn sign(secretKey: Vec<u32>, msg: Vec<u32>, opt_random:Vec<u32>) -> Vec<u32> {
+fn sign(secretKey: &Vec<u32>, msg: &Vec<u32>, opt_random: &Vec<u32>) -> Vec<u32> {
   let mut len = 64;
   if opt_random.len() > 0 {
 	len = 128;
   } 	
   let mut buf: Vec<u32> = vec![0; len + msg.len()];
-  curve25519_sign(&mut buf, msg.clone(), msg.len(), secretKey, opt_random);  
+  curve25519_sign(&mut buf, &msg, msg.len(), secretKey, opt_random);  
   
   let mut signature: Vec<u32> = vec![0; 64];
   for i in (0..signature.len()) {
@@ -1133,7 +1133,7 @@ fn sign(secretKey: Vec<u32>, msg: Vec<u32>, opt_random:Vec<u32>) -> Vec<u32> {
   return signature;
 }
 
-fn verify(publicKey: Vec<u32>, msg: Vec<u32>, signature: Vec<u32>) -> isize {
+fn verify(publicKey: &Vec<u32>, msg: &Vec<u32>, signature: &Vec<u32>) -> isize {
   let mut sm: Vec<u32> = vec![0; 64 + msg.len()];
   let mut m: Vec<u32> = vec![0; 64 + msg.len()];
  
@@ -1146,7 +1146,7 @@ fn verify(publicKey: Vec<u32>, msg: Vec<u32>, signature: Vec<u32>) -> isize {
   }
   
   let sm_len = sm.len();
-  if curve25519_sign_open(&mut m, &mut sm, sm_len, publicKey.clone() ) >= 0 {
+  if curve25519_sign_open(&mut m, &mut sm, sm_len, &publicKey ) >= 0 {
 	return 1;
   } else {
 	return 0;
@@ -1158,7 +1158,7 @@ struct Keys {
 	privateKey: Vec<u32>,
 }
 
-fn generateKeyPair(seed: Vec<u32>) -> Keys {
+fn generateKeyPair(seed: &Vec<u32>) -> Keys {
   let mut sk: Vec<u32> = vec![0; 32];
   let mut pk: Vec<u32> = vec![0; 32];
 
@@ -1166,7 +1166,7 @@ fn generateKeyPair(seed: Vec<u32>) -> Keys {
 	sk[i] = seed[i];
   }
 		
-  crypto_scalarmult_base(&mut pk, sk.clone());
+  crypto_scalarmult_base(&mut pk, &sk);
 
   // Turn secret key into the correct format.
   sk[0] = sk[0] & 248;
@@ -1201,7 +1201,7 @@ fn str_to_vec32(text: String) -> Vec<u32> {
 	msg_32
 }
 
-fn vec32_to_str(vec: Vec<u32>) -> String {
+fn vec32_to_str(vec: &Vec<u32>) -> String {
 	let mut msg_8: Vec<u8> = vec![0; vec.len()];
 	for i in (0..vec.len()) {
 		msg_8[i] = vec[i] as u8;
@@ -1218,7 +1218,7 @@ fn main() {
 	println!("seed = {:?}", seed);
 	
 	// generate key pair
-	let keys = generateKeyPair(seed); 
+	let keys = generateKeyPair(&seed); 
 	
 	println!("publicKey = {:?}", keys.publicKey);
 	println!("privateKey = {:?}", keys.privateKey);
@@ -1231,21 +1231,21 @@ fn main() {
 	
 	println!("msg = {:?}", msg);
 	
-	let sig = sign(keys.privateKey.clone(), msg.clone(), rnd.clone());
+	let sig = sign(&keys.privateKey, &msg, &rnd);
 	
 	println!("sig = {:?}", sig);
 	
-	let res = verify(keys.publicKey.clone(), msg.clone(), sig.clone());
-	let res1 = verify(keys.privateKey.clone(), msg.clone(), sig.clone());
+	let res = verify(&keys.publicKey, &msg, &sig);
+	let res1 = verify(&keys.privateKey, &msg, &sig);
 
 	println!("res = {:?}", res);
 	println!("res1 = {:?}", res1);
 
-	let mut sigmsg = signMessage(keys.privateKey.clone(), msg.clone(), rnd.clone());
-	let msg2 = openMessage(keys.publicKey.clone(), &mut sigmsg);
+	let mut sigmsg = signMessage(&keys.privateKey, &msg, &rnd);
+	let msg2 = openMessage(&keys.publicKey, &mut sigmsg);
 	
 	println!("sigmsg = {:?}", sigmsg);
 	println!("msg2 = {:?}", msg2 );
-	println!("msg_8 = {:?}", vec32_to_str(msg2.clone()));
+	println!("msg_8 = {:?}", vec32_to_str(&msg2));
 	
 }
